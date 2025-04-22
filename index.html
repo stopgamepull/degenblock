@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlockID</title>
+    <title>DegenBlock</title>
     <link rel="shortcut icon" href="images/block.png" type="image/svg+xml">
     <style>
       body {
@@ -166,7 +166,7 @@
   </head>
   <body>
     <div class="header">
-      <h1>BLOCKID</h1>
+      <h1>DegenBlock</h1>
       <p>Block by block</p>
     </div>
 
@@ -190,8 +190,8 @@
     </div>
 
     <div class="foter">
-      <a href="https://x.com/TheBlockID">Twitter</a>
-      <a href="https://t.me/TheBlockID">Telegram</a>
+      <a href="https://x.com/degenblock_sol">Twitter</a>
+      <a href="">DEX</a>
     </div>
 
     <script>
@@ -279,15 +279,15 @@
         block.className = "block";
         block.id = `block-${id}`;
 
-        const blockId = document.createElement("div");
-        blockId.className = "block-id";
-        blockId.textContent = `ID: ${id}`;
+        const DegenBlock = document.createElement("div");
+        DegenBlock.className = "block-id";
+        DegenBlock.textContent = `ID: ${id}`;
 
         const blockContent = document.createElement("div");
         blockContent.className = "block-text";
         blockContent.textContent = text;
 
-        block.appendChild(blockId);
+        block.appendChild(DegenBlock);
         block.appendChild(blockContent);
 
         // Calculate position (left-to-right, top-to-bottom)
