@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockID</title>
+    <link rel="shortcut icon" href="images/block.png" type="image/svg+xml">
+    <style>
+      body {
+        font-family: "Courier New", monospace;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+        overflow-x: hidden;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        font-size: 2em;
+        letter-spacing: 3px;
+        margin-bottom: 10px;
+      }
+
+      .controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      input {
+        padding: 8px;
+        border: 2px solid #333;
+        background-color: transparent;
+        font-family: inherit;
+        font-size: 14px;
+        max-width: 180px;
+      }
+
+      button {
+        padding: 8px 16px;
+        background-color: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+
+      button:hover {
+        background-color: #555;
+      }
+
+      .stats {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 1em;
+      }
+
+      .wall-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        height: 65vh;
+        border: 2px dashed #ccc;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f8f8f8;
+        overflow-y: auto;
+        position: relative;
+      }
+
+      .wall {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-content: flex-start;
+      }
+
+      .block {
+        width: 70px;
+        height: 70px;
+        background-color: white;
+        border: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 4px;
+        box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+        transition: all 0.2s;
+        position: relative;
+        font-size: 0.7em;
+      }
+
+      .block:hover {
+        transform: translate(-1px, -1px);
+        box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+        z-index: 100;
+        border-color: #555;
+      }
+
+      .block-id {
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        font-size: 0.6em;
+        color: #666;
+      }
+
+      .block-text {
+        text-align: center;
+        word-break: break-word;
+        max-width: 100%;
+        padding-top: 12px;
+        line-height: 1.2;
+      }
+
+      .search-results {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 0.9em;
+        min-height: 20px;
+      }
+
+      .highlight {
+        background-color: yellow;
+        animation: pulse 1s infinite;
+        border: 2px solid red;
+        z-index: 200;
+      }
+
+      @keyframes pulse {
+        0% {
+          background-color: yellow;
+        }
+        50% {
+          background-color: #ffff99;
+        }
+        100% {
+          background-color: yellow;
+        }
+      }
+
+      .foter {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+      }
+
+      a {
+        text-decoration: none;
+        color: #000;
+        margin-right: 10px;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>BLOCKID</h1>
+      <p>Block by block</p>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="blockText" placeholder="Text (max 32)" maxlength="32">
+      <button onclick="addBlock()">Send</button>
+      <input type="number" id="searchId" placeholder="Search by ID">
+      <button onclick="searchBlock()">Search</button>
+      <button onclick="clearSearch()">Clear</button>
+    </div>
+
+    <div class="stats">
+      Total blocks: <span id="totalBlocks">0</span> | Blocks per row:
+      <span id="blocksPerRow">0</span>
+    </div>
+
+    <div class="search-results" id="searchResults"></div>
+
+    <div class="wall-container">
+      <div class="wall" id="wall"></div>
+    </div>
+
+    <div class="foter">
+      <a href="https://x.com/TheBlockID">Twitter</a>
+      <a href="https://t.me/TheBlockID">Telegram</a>
+    </div>
+
+    <script>
+      let blockCounter = 0;
+      const wall = document.getElementById("wall");
+      const totalBlocksElement = document.getElementById("totalBlocks");
+      const blocksPerRowElement = document.getElementById("blocksPerRow");
+      const searchResults = document.getElementById("searchResults");
+      const wallContainer = document.querySelector(".wall-container");
+      const blockWidth = 70;
+      const blockHeight = 70;
+      const gap = 6;
+
+      // Database connection details
+      const dbConfig = {
+        host: "45.133.200.20",
+        user: "u505049_u5050491111",
+        password: "PB3^]*?kY9v?",
+        database: "u505049_main",
+      };
+
+      // Calculate how many blocks fit in a row
+      function calculateBlocksPerRow() {
+        const availableWidth = wallContainer.offsetWidth - 20;
+        const perRow = Math.floor(availableWidth / (blockWidth + gap));
+        blocksPerRowElement.textContent = perRow;
+        return perRow;
+      }
+
+      // Save block to database
+      async function saveBlockToDB(id, text) {
+        try {
+          const response = await fetch("save_block.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: id,
+              text: text,
+            }),
+          });
+
+          const result = await response.json();
+          if (!result.success) {
+            console.error("Error saving block:", result.message);
+          }
+        } catch (error) {
+          console.error("Error saving block:", error);
+        }
+      }
+
+      // Load blocks from database
+      async function loadBlocksFromDB() {
+        try {
+          const response = await fetch("load_blocks.php");
+          const blocks = await response.json();
+
+          if (blocks && blocks.length > 0) {
+            // Clear existing blocks
+            wall.innerHTML = "";
+            blockCounter = 0;
+
+            // Add each block from the database
+            for (const block of blocks) {
+              addBlockFromDB(block.text, block.id);
+            }
+
+            // Update counter to max ID + 1
+            if (blocks.length > 0) {
+              const maxId = Math.max(...blocks.map((b) => b.id));
+              blockCounter = maxId + 1;
+            }
+
+            totalBlocksElement.textContent = blocks.length;
+          }
+        } catch (error) {
+          console.error("Error loading blocks:", error);
+        }
+      }
+
+      // Add a new block from database (without incrementing counter)
+      function addBlockFromDB(text, id) {
+        const block = document.createElement("div");
+        block.className = "block";
+        block.id = `block-${id}`;
+
+        const blockId = document.createElement("div");
+        blockId.className = "block-id";
+        blockId.textContent = `ID: ${id}`;
+
+        const blockContent = document.createElement("div");
+        blockContent.className = "block-text";
+        blockContent.textContent = text;
+
+        block.appendChild(blockId);
+        block.appendChild(blockContent);
+
+        // Calculate position (left-to-right, top-to-bottom)
+        const blocksPerRow = calculateBlocksPerRow();
+        const row = Math.floor(id / blocksPerRow);
+        const col = id % blocksPerRow;
+
+        block.style.position = "absolute";
+        block.style.bottom = `${row * (blockHeight + gap)}px`;
+        block.style.left = `${col * (blockWidth + gap)}px`;
+
+        wall.appendChild(block);
+
+        // Auto-scroll when wall grows
+        if (row > 3) {
+          wallContainer.scrollTo({
+            top: wall.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }
+
+      // Add a new block (user action)
+      async function addBlock(customText = null) {
+        const blockText =
+          customText || document.getElementById("blockText").value;
+
+        if (!customText && (!blockText || blockText.trim() === "")) {
+          alert("Please enter some text");
+          return;
+        }
+
+        const newId = blockCounter;
+        addBlockFromDB(blockText, newId);
+
+        // Increment counter after adding
+        blockCounter++;
+        totalBlocksElement.textContent =
+          document.querySelectorAll(".block").length;
+
+        // Save to database
+        await saveBlockToDB(newId, blockText);
+
+        if (!customText) {
+          document.getElementById("blockText").value = "";
+        }
+      }
+
+      // Search block by ID
+      function searchBlock() {
+        const searchId = document.getElementById("searchId").value;
+
+        if (!searchId || isNaN(searchId)) {
+          alert("Please enter a valid block ID");
+          return;
+        }
+
+        const id = parseInt(searchId);
+        const block = document.getElementById(`block-${id}`);
+
+        if (block) {
+          document.querySelectorAll(".highlight").forEach((el) => {
+            el.classList.remove("highlight");
+          });
+
+          block.classList.add("highlight");
+          searchResults.innerHTML = `Block ${id}: "${
+            block.querySelector(".block-text").textContent
+          }"`;
+
+          // Scroll to the block
+          const blockRect = block.getBoundingClientRect();
+          const containerRect = wallContainer.getBoundingClientRect();
+          const scrollPosition =
+            blockRect.top - containerRect.top + wallContainer.scrollTop - 100;
+
+          wallContainer.scrollTo({
+            top: scrollPosition,
+            behavior: "smooth",
+          });
+        } else {
+          searchResults.innerHTML = `Block ${id} not found.`;
+        }
+      }
+
+      // Clear search highlights
+      function clearSearch() {
+        document.getElementById("searchId").value = "";
+        document.querySelectorAll(".highlight").forEach((el) => {
+          el.classList.remove("highlight");
+        });
+        searchResults.innerHTML = "";
+      }
+
+      // Handle window resize
+      function repositionBlocks() {
+        const blocksPerRow = calculateBlocksPerRow();
+        const blocks = document.querySelectorAll(".block");
+
+        blocks.forEach((block) => {
+          const id = parseInt(block.id.split("-")[1]);
+          const row = Math.floor(id / blocksPerRow);
+          const col = id % blocksPerRow;
+
+          block.style.bottom = `${row * (blockHeight + gap)}px`;
+          block.style.left = `${col * (blockWidth + gap)}px`;
+        });
+      }
+
+      window.addEventListener("resize", repositionBlocks);
+
+      // Allow adding blocks with Enter key
+      document
+        .getElementById("blockText")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            addBlock();
+          }
+        });
+
+      // Initialize
+      loadBlocksFromDB();
+      calculateBlocksPerRow();
+    </script>
+  
+
+</body></html>
